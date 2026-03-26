@@ -1,74 +1,90 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Plus, 
-  ArrowLeft, 
-  Eye, 
-  EyeOff, 
-  LayoutDashboard, 
-  BarChart3, 
-  Wallet, 
-  Tag, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Plus,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  LayoutDashboard,
+  BarChart3,
+  Wallet,
+  Tag,
   LogOut,
-  Layout 
+  Layout,
+  Menu,
+  X,
 } from "lucide-react";
 import { useTransactions } from "../hooks/useTransactions";
 import AddExpense from "../components/AddExpense";
 import ExpenseDetail from "../components/ExpenseDetail";
 import { setCookie, getCookie } from "../utils/cookies";
-import Statistics from "../components/Statistics"; 
+import Statistics from "../components/Statistics";
 import Categories from "../components/Categories";
-import Overview from "../components/Overview"; 
+import Overview from "../components/Overview";
 
 const categoryBadges = {
-  Food: 'bg-orange-100 text-orange-700',
-  Transport: 'bg-blue-100 text-blue-700',
-  Shopping: 'bg-pink-100 text-pink-700',
-  Entertainment: 'bg-purple-100 text-purple-700',
-  Bills: 'bg-red-100 text-red-700',
-  Health: 'bg-green-100 text-green-700',
-  Other: 'bg-gray-100 text-gray-700',
+  Food: "bg-orange-100 text-orange-700",
+  Transport: "bg-blue-100 text-blue-700",
+  Shopping: "bg-pink-100 text-pink-700",
+  Entertainment: "bg-purple-100 text-purple-700",
+  Bills: "bg-red-100 text-red-700",
+  Health: "bg-green-100 text-green-700",
+  Other: "bg-gray-100 text-gray-700",
 };
 
-// ADDED: Props to receive trip information from App.jsx
 function Home({ mode, activeTrip, goBack }) {
-  // Use trip ID as the storage key if in trip mode, otherwise 'basic'
-  const storageKey = mode === 'basic' ? 'basic' : activeTrip?.id;
-  
+  const storageKey = mode === "basic" ? "basic" : activeTrip?.id;
+
   const {
-    currentTransactions, transactions, selected, setSelected, isAdding, setIsAdding,
-    currentPage, setCurrentPage, totalPages, totals, addTransaction, updateTransaction,
-    deleteTransaction, itemsPerPage
-  } = useTransactions(storageKey); // Pass storageKey here
+    currentTransactions,
+    transactions,
+    selected,
+    setSelected,
+    isAdding,
+    setIsAdding,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totals,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+  } = useTransactions(storageKey);
 
   const [visitCount, setVisitCount] = useState(1);
-  const [lastActive, setLastActive] = useState('Just now');
+  const [lastActive, setLastActive] = useState("Just now");
   const [privacyMode, setPrivacyMode] = useState(false);
-  
+
   const [isViewingOverview, setIsViewingOverview] = useState(false);
   const [isViewingStats, setIsViewingStats] = useState(false);
   const [isViewingCategories, setIsViewingCategories] = useState(false);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   useEffect(() => {
-    const savedVisits = parseInt(getCookie('visit_count') || '0');
-    const savedLastActive = getCookie('last_active') || 'First time';
-    const savedPrivacy = getCookie('privacy_preference') === 'true';
+    const savedVisits = parseInt(getCookie("visit_count") || "0");
+    const savedLastActive = getCookie("last_active") || "First time";
+    const savedPrivacy = getCookie("privacy_preference") === "true";
 
     const newVisitCount = savedVisits + 1;
     setVisitCount(newVisitCount);
     setLastActive(savedLastActive);
     setPrivacyMode(savedPrivacy);
 
-    setCookie('visit_count', newVisitCount, 7);
-    setCookie('last_active', new Date().toLocaleString(), 7);
+    setCookie("visit_count", newVisitCount, 7);
+    setCookie("last_active", new Date().toLocaleString(), 7);
   }, []);
 
   const togglePrivacy = () => {
     const newMode = !privacyMode;
     setPrivacyMode(newMode);
-    setCookie('privacy_preference', newMode, 7);
+    setCookie("privacy_preference", newMode, 7);
+  };
+
+  const closeSidebarOnMobile = () => {
+    setIsSidebarOpen(false);
   };
 
   const goToDashboard = () => {
@@ -77,6 +93,7 @@ function Home({ mode, activeTrip, goBack }) {
     setSelected(null);
     setIsViewingStats(false);
     setIsViewingCategories(false);
+    closeSidebarOnMobile();
   };
 
   const goToOverview = () => {
@@ -85,6 +102,7 @@ function Home({ mode, activeTrip, goBack }) {
     setIsViewingCategories(false);
     setIsAdding(false);
     setSelected(null);
+    closeSidebarOnMobile();
   };
 
   const goToAddTransaction = () => {
@@ -93,6 +111,7 @@ function Home({ mode, activeTrip, goBack }) {
     setIsViewingStats(false);
     setIsViewingCategories(false);
     setIsViewingOverview(false);
+    closeSidebarOnMobile();
   };
 
   const goToStatistics = () => {
@@ -101,6 +120,7 @@ function Home({ mode, activeTrip, goBack }) {
     setIsViewingOverview(false);
     setIsAdding(false);
     setSelected(null);
+    closeSidebarOnMobile();
   };
 
   const goToCategories = () => {
@@ -109,212 +129,415 @@ function Home({ mode, activeTrip, goBack }) {
     setIsViewingOverview(false);
     setIsAdding(false);
     setSelected(null);
+    closeSidebarOnMobile();
   };
 
   const handleLogout = () => {
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
-  // Dynamically set title based on current trip or basic mode
-  const pageTitle = mode === 'basic' ? 'Welcome back! 👋' : `${activeTrip?.name} ✈️`;
+  const pageTitle =
+    mode === "basic" ? "Welcome back! 👋" : `${activeTrip?.name} ✈️`;
+
+  const isDashboardView =
+    !isAdding &&
+    !selected &&
+    !isViewingStats &&
+    !isViewingCategories &&
+    !isViewingOverview;
 
   return (
-    <div className="flex min-h-screen bg-[#2563eb] font-sans text-slate-900">
-      
-      <aside className="w-64 bg-[#151b2b] flex flex-col shadow-2xl z-10 shrink-0">
-        <div className="p-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg shadow-pink-500/40">
-              <Wallet className="text-white w-5 h-5" />
+    <div className="min-h-screen bg-[#2563eb] text-slate-900 md:flex">
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] transform bg-[#151b2b] shadow-2xl transition-transform duration-300 md:static md:z-10 md:w-64 md:max-w-none md:translate-x-0 md:shrink-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } flex flex-col`}
+      >
+        <div className="flex items-center justify-between p-6 md:p-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-lg shadow-pink-500/40">
+              <Wallet className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-wide">SmartSpend</h2>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest">Track your expenses</p>
+              <h2 className="text-xl font-bold tracking-wide text-white">
+                SmartSpend
+              </h2>
+              <p className="text-[10px] uppercase tracking-widest text-gray-400">
+                Track your expenses
+              </p>
             </div>
           </div>
+
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white md:hidden"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-3 mt-2">
-          <button 
-            onClick={goToDashboard} 
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${!isAdding && !selected && !isViewingStats && !isViewingCategories && !isViewingOverview ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+        <nav className="mt-2 flex-1 space-y-3 px-4 pb-4">
+          <button
+            onClick={goToDashboard}
+            className={`w-full rounded-xl px-4 py-3.5 text-left font-medium transition-all flex items-center gap-3 ${
+              isDashboardView
+                ? "bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
           >
-            <LayoutDashboard className="w-5 h-5" /> Dashboard
-          </button>
-          
-          <button 
-            onClick={goToAddTransaction} 
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${isAdding ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <Plus className="w-5 h-5" /> Add Transaction
+            <LayoutDashboard className="h-5 w-5" />
+            <span>Dashboard</span>
           </button>
 
-          <button 
+          <button
+            onClick={goToAddTransaction}
+            className={`w-full rounded-xl px-4 py-3.5 text-left font-medium transition-all flex items-center gap-3 ${
+              isAdding
+                ? "bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add Transaction</span>
+          </button>
+
+          <button
             onClick={goToStatistics}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${isViewingStats ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+            className={`w-full rounded-xl px-4 py-3.5 text-left font-medium transition-all flex items-center gap-3 ${
+              isViewingStats
+                ? "bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
           >
-            <BarChart3 className="w-5 h-5" /> Statistics
+            <BarChart3 className="h-5 w-5" />
+            <span>Statistics</span>
           </button>
 
-          <button 
+          <button
             onClick={goToCategories}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${isViewingCategories ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+            className={`w-full rounded-xl px-4 py-3.5 text-left font-medium transition-all flex items-center gap-3 ${
+              isViewingCategories
+                ? "bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
           >
-            <Tag className="w-5 h-5" /> Categories
+            <Tag className="h-5 w-5" />
+            <span>Categories</span>
           </button>
 
-          <button 
-            onClick={goToOverview} 
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${isViewingOverview ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          <button
+            onClick={goToOverview}
+            className={`w-full rounded-xl px-4 py-3.5 text-left font-medium transition-all flex items-center gap-3 ${
+              isViewingOverview
+                ? "bg-[#3b82f6] text-white shadow-lg shadow-blue-500/30"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
           >
-            <Layout className="w-5 h-5" /> Overview
+            <Layout className="h-5 w-5" />
+            <span>Overview</span>
           </button>
         </nav>
 
-        <div className="p-4 mt-auto border-t border-slate-800">
-          {/* ADDED: Button to go back to trip selection list */}
-          <button 
-            onClick={goBack}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium text-slate-400 hover:bg-slate-800 hover:text-white mb-2"
+        <div className="mt-auto border-t border-slate-800 p-4">
+          <button
+            onClick={() => {
+              closeSidebarOnMobile();
+              goBack?.();
+            }}
+            className="mb-2 flex w-full items-center gap-3 rounded-xl px-4 py-3.5 font-medium text-slate-400 transition-all hover:bg-slate-800 hover:text-white"
           >
-            <ArrowLeft className="w-5 h-5" /> Exit to Trips
+            <ArrowLeft className="h-5 w-5" />
+            <span>Exit to Trips</span>
           </button>
-          <button 
+
+          <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-all"
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 font-medium text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-500"
           >
-            <LogOut className="w-5 h-5" /> Logout
+            <LogOut className="h-5 w-5" />
+            <span>Logout</span>
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
-        {isViewingOverview ? (
-          <Overview 
-            transactions={transactions} 
-            currentTransactions={currentTransactions}
-            setSelected={setSelected}
-          />
-        ) : isViewingCategories ? (
-          <Categories transactions={transactions} />
-        ) : isViewingStats ? (
-          <Statistics transactions={transactions} />
-        ) : isAdding ? (
-          <div className="flex items-center justify-center min-h-[80vh]">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-4 overflow-hidden">
-              <AddExpense onAdd={addTransaction} goBack={goToDashboard} />
-            </motion.div>
+      <main className="min-w-0 flex-1">
+        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-[#2563eb]/95 px-4 py-4 backdrop-blur md:hidden">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="rounded-xl bg-white/10 p-3 text-white shadow-lg transition hover:bg-white/20"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <div className="mx-3 min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-white">
+              {mode === "basic" ? "SmartSpend" : activeTrip?.name}
+            </p>
+            <p className="truncate text-xs text-blue-100/80">
+              Track your expenses
+            </p>
           </div>
-        ) : selected ? (
-          <div className="flex items-center justify-center min-h-[80vh]">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-2xl bg-white rounded-3xl p-8 shadow-2xl">
-              <button onClick={goToDashboard} className="mb-6 flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors font-medium">
-                <ArrowLeft className="w-5 h-5" /> Back to Dashboard
-              </button>
-              <ExpenseDetail expense={selected} onDelete={deleteTransaction} onUpdate={updateTransaction} />
-            </motion.div>
-          </div>
-        ) : (
-          <div className="max-w-6xl mx-auto">
-            <div className="flex justify-between items-start mb-10">
-              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                <h1 className="text-4xl text-white font-bold mb-2">{pageTitle}</h1>
-                <p className="text-blue-100 mb-2 text-lg">Here's what's happening with your money</p>
-                <p className="text-xs text-blue-200/70 font-medium">
-                  Visits: {visitCount} | Last active: {lastActive}
-                </p>
+
+          <button
+            onClick={togglePrivacy}
+            className="rounded-xl bg-white/10 p-3 text-white shadow-lg transition hover:bg-white/20"
+            title="Toggle Privacy Mode"
+            aria-label="Toggle privacy mode"
+          >
+            {privacyMode ? (
+              <EyeOff className="h-5 w-5" />
+            ) : (
+              <Eye className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+
+        <div className="overflow-y-auto p-4 sm:p-6 md:p-10">
+          {isViewingOverview ? (
+            <Overview
+              transactions={transactions}
+              currentTransactions={currentTransactions}
+              setSelected={setSelected}
+            />
+          ) : isViewingCategories ? (
+            <Categories transactions={transactions} />
+          ) : isViewingStats ? (
+            <Statistics transactions={transactions} />
+          ) : isAdding ? (
+            <div className="flex min-h-[70vh] items-center justify-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white p-4 shadow-2xl sm:p-6"
+              >
+                <AddExpense onAdd={addTransaction} goBack={goToDashboard} />
               </motion.div>
-              
-              <div className="flex gap-3 mt-2">
-                <button onClick={togglePrivacy} className="px-4 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl shadow-lg transition-all" title="Toggle Privacy Mode">
-                  {privacyMode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </div>
+          ) : selected ? (
+            <div className="flex min-h-[70vh] items-center justify-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-2xl rounded-3xl bg-white p-5 shadow-2xl sm:p-8"
+              >
+                <button
+                  onClick={goToDashboard}
+                  className="mb-6 flex items-center gap-2 font-medium text-gray-500 transition-colors hover:text-blue-600"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  <span>Back to Dashboard</span>
                 </button>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 flex justify-between items-start">
-                <div>
-                  <p className="text-sm text-gray-400 uppercase tracking-widest font-semibold mb-3">Total Income</p>
-                  <p className="text-5xl text-gray-900 font-bold">
-                    {privacyMode ? '***' : `${totals.income.toFixed(0)}`} <span className="text-2xl text-gray-400 font-medium">lei</span>
-                  </p>
-                </div>
-                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/30">
-                  <TrendingUp className="text-white w-8 h-8" />
-                </div>
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 flex justify-between items-start">
-                <div>
-                  <p className="text-sm text-gray-400 uppercase tracking-widest font-semibold mb-3">Total Expense</p>
-                  <p className="text-5xl text-gray-900 font-bold">
-                     {privacyMode ? '***' : `${totals.expense.toFixed(0)}`} <span className="text-2xl text-gray-400 font-medium">lei</span>
-                  </p>
-                </div>
-                <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-rose-500 rounded-2xl flex items-center justify-center shadow-lg shadow-red-500/30">
-                  <TrendingDown className="text-white w-8 h-8" />
-                </div>
+                <ExpenseDetail
+                  expense={selected}
+                  onDelete={deleteTransaction}
+                  onUpdate={updateTransaction}
+                />
               </motion.div>
             </div>
+          ) : (
+            <div className="mx-auto w-full max-w-6xl">
+              <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-start md:justify-between">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="min-w-0"
+                >
+                  <h1 className="break-words text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
+                    {pageTitle}
+                  </h1>
+                  <p className="mt-2 text-base text-blue-100 sm:text-lg">
+                    Here's what's happening with your money
+                  </p>
+                  <p className="mt-2 break-words text-xs font-medium text-blue-200/70 sm:text-sm">
+                    Visits: {visitCount} | Last active: {lastActive}
+                  </p>
+                </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl p-8 shadow-xl">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl text-gray-900 font-bold">Recent Transactions</h2>
-              </div>
-              
-              {transactions.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <BarChart3 className="w-10 h-10 text-blue-300" />
-                  </div>
-                  <p className="text-gray-500 text-lg font-medium">No transactions yet</p>
-                  <p className="text-gray-400 text-sm mt-2">Use the menu on the left to add one!</p>
+                <div className="hidden gap-3 md:flex">
+                  <button
+                    onClick={togglePrivacy}
+                    className="rounded-xl bg-white/10 px-4 py-3 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-white/20"
+                    title="Toggle Privacy Mode"
+                    aria-label="Toggle privacy mode"
+                  >
+                    {privacyMode ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b-2 border-gray-100 text-gray-400 text-xs uppercase font-bold tracking-wider">
-                          <th className="text-left py-4 px-4">Title</th>
-                          <th className="text-left py-4 px-4">Category</th>
-                          <th className="text-left py-4 px-4">Amount</th>
-                          <th className="text-left py-4 px-4">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentTransactions.map((t, index) => (
-                          <motion.tr 
-                            key={t.id} 
-                            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}
-                            onClick={() => setSelected(t)} 
-                            className="border-b border-gray-50 hover:bg-blue-50 cursor-pointer transition-colors group"
-                          >
-                            <td className="py-6 px-4 text-sm text-gray-700 font-semibold">{t.title}</td>
-                            <td className="py-6 px-4"><span className={`px-4 py-1.5 rounded-md text-xs font-bold tracking-wide ${categoryBadges[t.category] || categoryBadges['Other']}`}>{t.category}</span></td>
-                            <td className={`py-6 px-4 text-base font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                              {privacyMode ? '***' : `${t.type === 'income' ? '+' : '-'}${t.amount.toFixed(0)} lei`}
-                            </td>
-                            <td className="py-6 px-4 text-sm text-gray-400 font-medium">{new Date(t.date).toLocaleDateString()}</td>
-                          </motion.tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+              </div>
 
-                  <div className="flex items-center justify-between mt-8 pt-4 border-t border-gray-100">
-                    <p className="text-sm text-gray-400 font-medium">Page {currentPage} of {totalPages}</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1} className="px-5 py-2.5 text-sm font-bold rounded-xl bg-gray-50 text-gray-600 disabled:opacity-50 hover:bg-gray-100 transition-colors">Prev</button>
-                      <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages} className="px-5 py-2.5 text-sm font-bold rounded-xl bg-gray-50 text-gray-600 disabled:opacity-50 hover:bg-gray-100 transition-colors">Next</button>
+              <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 md:mb-10 md:gap-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col justify-between rounded-3xl bg-white p-5 shadow-xl transition-all duration-300 hover:shadow-2xl sm:p-6 lg:p-8"
+                >
+                  <div className="mb-5 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 sm:text-sm">
+                        Total Income
+                      </p>
+                      <p className="break-words text-3xl font-bold text-gray-900 sm:text-4xl lg:text-5xl">
+                        {privacyMode ? "***" : `${totals.income.toFixed(0)}`}{" "}
+                        <span className="text-xl font-medium text-gray-400 sm:text-2xl">
+                          lei
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg shadow-green-500/30 sm:h-16 sm:w-16">
+                      <TrendingUp className="h-7 w-7 text-white sm:h-8 sm:w-8" />
                     </div>
                   </div>
-                </>
-              )}
-            </motion.div>
-          </div>
-        )}
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="flex flex-col justify-between rounded-3xl bg-white p-5 shadow-xl transition-all duration-300 hover:shadow-2xl sm:p-6 lg:p-8"
+                >
+                  <div className="mb-5 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 sm:text-sm">
+                        Total Expense
+                      </p>
+                      <p className="break-words text-3xl font-bold text-gray-900 sm:text-4xl lg:text-5xl">
+                        {privacyMode ? "***" : `${totals.expense.toFixed(0)}`}{" "}
+                        <span className="text-xl font-medium text-gray-400 sm:text-2xl">
+                          lei
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-400 to-rose-500 shadow-lg shadow-red-500/30 sm:h-16 sm:w-16">
+                      <TrendingDown className="h-7 w-7 text-white sm:h-8 sm:w-8" />
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="rounded-3xl bg-white p-5 shadow-xl sm:p-6 lg:p-8"
+              >
+                <div className="mb-6 flex items-center justify-between sm:mb-8">
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                    Recent Transactions
+                  </h2>
+                </div>
+
+                {transactions.length === 0 ? (
+                  <div className="py-12 text-center sm:py-16">
+                    <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-blue-50">
+                      <BarChart3 className="h-10 w-10 text-blue-300" />
+                    </div>
+                    <p className="text-lg font-medium text-gray-500">
+                      No transactions yet
+                    </p>
+                    <p className="mt-2 text-sm text-gray-400">
+                      Use the menu to add one.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto rounded-2xl">
+                      <table className="min-w-[640px] w-full">
+                        <thead>
+                          <tr className="border-b-2 border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-400">
+                            <th className="px-4 py-4 text-left">Title</th>
+                            <th className="px-4 py-4 text-left">Category</th>
+                            <th className="px-4 py-4 text-left">Amount</th>
+                            <th className="px-4 py-4 text-left">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentTransactions.map((t, index) => (
+                            <motion.tr
+                              key={t.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              onClick={() => setSelected(t)}
+                              className="group cursor-pointer border-b border-gray-50 transition-colors hover:bg-blue-50"
+                            >
+                              <td className="px-4 py-5 text-sm font-semibold text-gray-700 sm:py-6">
+                                {t.title}
+                              </td>
+                              <td className="px-4 py-5 sm:py-6">
+                                <span
+                                  className={`inline-block rounded-md px-3 py-1.5 text-xs font-bold tracking-wide ${
+                                    categoryBadges[t.category] ||
+                                    categoryBadges.Other
+                                  }`}
+                                >
+                                  {t.category}
+                                </span>
+                              </td>
+                              <td
+                                className={`px-4 py-5 text-sm font-bold sm:py-6 sm:text-base ${
+                                  t.type === "income"
+                                    ? "text-green-600"
+                                    : "text-red-500"
+                                }`}
+                              >
+                                {privacyMode
+                                  ? "***"
+                                  : `${t.type === "income" ? "+" : "-"}${t.amount.toFixed(0)} lei`}
+                              </td>
+                              <td className="px-4 py-5 text-sm font-medium text-gray-400 sm:py-6">
+                                {new Date(t.date).toLocaleDateString()}
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-4 sm:mt-8 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-medium text-gray-400">
+                        Page {currentPage} of {totalPages}
+                      </p>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-50 sm:px-5"
+                        >
+                          Prev
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-50 sm:px-5"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
