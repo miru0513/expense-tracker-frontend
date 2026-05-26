@@ -2,27 +2,25 @@ import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { TrendingUp, DollarSign, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
-import { useTransactions } from '../hooks/useTransactions';
+import { useInfiniteTransactions } from '../hooks/useInfiniteTransactions';
 
 const COLORS = {
-  Food: '#fb923c',      // Orange
-  Transport: '#3b82f6', // Blue
-  Shopping: '#ec4899',  // Pink
-  Entertainment: '#a855f7', // Purple
-  Bills: '#ef4444',     // Red
-  Health: '#22c55e',    // Green
-  Other: '#6b7280',     // Gray
+  Food: '#fb923c',
+  Transport: '#3b82f6',
+  Shopping: '#ec4899',
+  Entertainment: '#a855f7',
+  Bills: '#ef4444',
+  Health: '#22c55e',
+  Other: '#6b7280',
 };
 
-export default function Statistics() {
-  const { transactions } = useTransactions();
+export default function Statistics({ storageKey = 'basic', userId = null }) {
+  const { transactions } = useInfiniteTransactions(storageKey, userId);
 
-  // DEBUG 1: Make type check case-insensitive just in case
   const expenses = transactions.filter(t => t.type && t.type.toLowerCase() === 'expense');
 
   const categoryData = Object.keys(COLORS).map(category => {
     const total = expenses
-      // DEBUG 2: Make category check case-insensitive
       .filter(e => e.category && e.category.toLowerCase() === category.toLowerCase())
       .reduce((sum, e) => sum + Number(e.amount), 0);
     return { name: category, value: total };
@@ -31,25 +29,19 @@ export default function Statistics() {
   const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
-  
+
   const dailyData = eachDayOfInterval({ start: monthStart, end: monthEnd })
     .map(day => {
       const total = expenses
         .filter(e => {
           try {
-            // DEBUG 3: Use date-fns isSameDay to avoid string parsing errors entirely
-            const expenseDate = new Date(e.date);
-            return isSameDay(expenseDate, day);
+            return isSameDay(new Date(e.date), day);
           } catch {
             return false;
           }
         })
         .reduce((sum, e) => sum + Number(e.amount), 0);
-
-      return {
-        date: format(day, 'MMM d'), // e.g., "Mar 26"
-        amount: total,
-      };
+      return { date: format(day, 'MMM d'), amount: total };
     });
 
   const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
@@ -57,7 +49,7 @@ export default function Statistics() {
 
   return (
     <div className="w-full max-w-5xl mx-auto pb-10">
-      
+
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-8">
         <h1 className="text-4xl text-white mb-2 font-bold flex items-center gap-3">
           Statistics 📊
@@ -135,7 +127,9 @@ export default function Statistics() {
                         <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: COLORS[item.name] || COLORS.Other }} />
                         <span className="text-gray-900 font-medium text-[15px]">{item.name}</span>
                       </div>
-                      <span className="text-gray-900 font-bold text-[15px]">{item.value.toFixed(2)} <span className="text-gray-400 text-xs">lei</span></span>
+                      <span className="text-gray-900 font-bold text-[15px]">
+                        {item.value.toFixed(2)} <span className="text-gray-400 text-xs">lei</span>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -153,16 +147,16 @@ export default function Statistics() {
 
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={dailyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fontSize: 11, fill: '#9ca3af' }} 
-                  axisLine={{ stroke: '#e5e7eb' }} 
-                  tickLine={false} 
-                  dy={10} 
-                  minTickGap={15} 
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                  tickLine={false}
+                  dy={10}
+                  minTickGap={15}
                 />
                 <YAxis tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={{ stroke: '#e5e7eb' }} tickLine={false} />
-                <Tooltip 
+                <Tooltip
                   cursor={{ fill: '#f3f4f6' }}
                   formatter={(value) => `${value.toFixed(2)} lei`}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
@@ -179,7 +173,6 @@ export default function Statistics() {
           </motion.div>
         </>
       )}
-
     </div>
   );
 }

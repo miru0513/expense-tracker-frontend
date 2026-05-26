@@ -1,55 +1,194 @@
-import { useState } from "react";
-
-// RAM Storage for various buckets (Basic vs Trips)
-const globalStorage = {
-  basic: [],
-};
+import { useState, useEffect, useCallback, useRef } from 'react';
+import * as api from '../utils/api';
+import {
+  getLocalTransactions,
+  addLocalTransaction,
+  updateLocalTransaction,
+  deleteLocalTransaction,
+  enqueue,
+  flushQueue,
+  getQueueLength,
+  onSync,
+} from '../utils/offlineQueue';
 
 export function useTransactions(storageKey = 'basic') {
-  // Initialize from bucket if exists, else empty
-  const [transactions, setTransactions] = useState(globalStorage[storageKey] || []);
+  const tripId = storageKey === 'basic' ? null : storageKey;
+
+  const [transactions, setTransactions] = useState([]);
   const [selected, setSelected] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totals, setTotals] = useState({ income: 0, expense: 0 });
+  const [loading, setLoading] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+
   const itemsPerPage = 5;
+  const syncIntervalRef = useRef(null);
 
-  const save = (newList) => {
-    globalStorage[storageKey] = newList;
-    setTransactions(newList);
+  const computeTotals = (list) => ({
+    income: list.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+    expense: list.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+  });
+
+  const paginateLocal = (list, page) => {
+    const sorted = [...list].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const total = sorted.length;
+    const pages = Math.ceil(total / itemsPerPage) || 1;
+    const data = sorted.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+    return { data, pages };
   };
 
-  const addTransaction = (t) => {
-    save([...transactions, t]);
+  const loadFromServer = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [result, stats] = await Promise.all([
+        api.fetchTransactions(currentPage, itemsPerPage, tripId),
+        api.fetchStatistics(tripId),
+      ]);
+      setTransactions(result.data);
+      setTotalPages(result.pagination.totalPages);
+      setTotals({ income: stats.totalIncome, expense: stats.totalExpense });
+      setIsOffline(false);
+    } catch {
+      setIsOffline(true);
+      const local = getLocalTransactions(storageKey);
+      const { data, pages } = paginateLocal(local, currentPage);
+      setTransactions(data);
+      setTotalPages(pages);
+      setTotals(computeTotals(local));
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, tripId, storageKey]);
+
+  const trySyncAndReload = useCallback(async () => {
+    const reachable = await api.isServerReachable();
+    if (!reachable) return;
+    if (getQueueLength() > 0) {
+      await flushQueue({
+        createTransaction: api.createTransaction,
+        updateTransaction: api.updateTransaction,
+        deleteTransaction: api.deleteTransaction,
+      });
+      setPendingSyncCount(0);
+    }
+    setIsOffline(false);
+    await loadFromServer();
+  }, [loadFromServer]);
+
+  useEffect(() => {
+    if (isOffline) {
+      syncIntervalRef.current = setInterval(trySyncAndReload, 5000);
+    } else {
+      clearInterval(syncIntervalRef.current);
+    }
+    return () => clearInterval(syncIntervalRef.current);
+  }, [isOffline, trySyncAndReload]);
+
+  useEffect(() => {
+    const handleOnline = () => trySyncAndReload();
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [trySyncAndReload]);
+
+  useEffect(() => {
+    onSync(() => {
+      setPendingSyncCount(0);
+      loadFromServer();
+    });
+  }, [loadFromServer]);
+
+  useEffect(() => {
+    loadFromServer();
+  }, [loadFromServer]);
+
+  const addTransaction = async (t) => {
+    const transaction = { ...t, tripId, id: `local-${Date.now()}` };
+    addLocalTransaction(transaction, storageKey);
     setIsAdding(false);
+    if (isOffline) {
+      enqueue({ method: 'POST', body: { ...t, tripId } });
+      setPendingSyncCount(getQueueLength());
+      const local = getLocalTransactions(storageKey);
+      const { data, pages } = paginateLocal(local, currentPage);
+      setTransactions(data);
+      setTotalPages(pages);
+      setTotals(computeTotals(local));
+    } else {
+      try {
+        await api.createTransaction({ ...t, tripId });
+        await loadFromServer();
+      } catch {
+        setIsOffline(true);
+        enqueue({ method: 'POST', body: { ...t, tripId } });
+        setPendingSyncCount(getQueueLength());
+      }
+    }
   };
 
-  const updateTransaction = (updated) => {
-    save(transactions.map((t) => (t.id === updated.id ? updated : t)));
+  const updateTransaction = async (updated) => {
+    updateLocalTransaction(updated, storageKey);
     setSelected(null);
+    if (isOffline) {
+      enqueue({ method: 'PUT', targetId: updated.id, body: updated });
+      setPendingSyncCount(getQueueLength());
+      const local = getLocalTransactions(storageKey);
+      const { data, pages } = paginateLocal(local, currentPage);
+      setTransactions(data);
+      setTotalPages(pages);
+      setTotals(computeTotals(local));
+    } else {
+      try {
+        await api.updateTransaction(updated.id, updated);
+        await loadFromServer();
+      } catch {
+        setIsOffline(true);
+        enqueue({ method: 'PUT', targetId: updated.id, body: updated });
+        setPendingSyncCount(getQueueLength());
+      }
+    }
   };
 
-  const deleteTransaction = (id) => {
-    save(transactions.filter((t) => t.id !== id));
+  const deleteTransaction = async (id) => {
+    deleteLocalTransaction(id, storageKey);
     setSelected(null);
+    if (isOffline) {
+      enqueue({ method: 'DELETE', targetId: id });
+      setPendingSyncCount(getQueueLength());
+      const local = getLocalTransactions(storageKey);
+      const { data, pages } = paginateLocal(local, currentPage);
+      setTransactions(data);
+      setTotalPages(pages);
+      setTotals(computeTotals(local));
+    } else {
+      try {
+        await api.deleteTransaction(id);
+        await loadFromServer();
+      } catch {
+        setIsOffline(true);
+        enqueue({ method: 'DELETE', targetId: id });
+        setPendingSyncCount(getQueueLength());
+      }
+    }
   };
-
-  const totals = {
-    income: transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0),
-    expense: transactions.filter(t => t.type === 'expense' || !t.type).reduce((sum, t) => sum + t.amount, 0)
-  };
-
-  const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const pagedData = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return {
     transactions,
-    currentTransactions: pagedData,
+    currentTransactions: transactions,
     selected, setSelected,
     isAdding, setIsAdding,
     currentPage, setCurrentPage,
-    totalPages: Math.ceil(sorted.length / itemsPerPage) || 1,
+    totalPages,
     totals,
-    addTransaction, updateTransaction, deleteTransaction,
-    itemsPerPage
+    loading,
+    isOffline,
+    pendingSyncCount,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    itemsPerPage,
+    loadFromServer,
   };
 }
