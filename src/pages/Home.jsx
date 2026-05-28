@@ -139,7 +139,7 @@ function Home({ mode, activeTrip, goBack, currentUser, hasPermission, isAdmin, o
           {navBtn(isViewingCategories, goToCategories, <Tag className="h-5 w-5" />,              "Categories")}
           {hasPermission('transaction:create') && navBtn(isAdding, goToAddTx, <Plus className="h-5 w-5" />, "Add Transaction")}
           {navBtn(isChatOpen, () => { setIsChatOpen(true); close(); }, <MessageCircle className="h-5 w-5" />, "Chat")}
-          {navBtn(isViewingSessions, goToSessions, <Key className="h-5 w-5" />, "Sessions & Tokens")}
+          {isAdmin && navBtn(isViewingSessions, goToSessions, <Key className="h-5 w-5" />, "Sessions & Tokens")}
           {isAdmin && navBtn(isViewingGenerator, goToGenerator, <Zap className="h-5 w-5" />,    "Generator")}
           {isAdmin && navBtn(isViewingAdmin,     goToAdmin,     <Shield className="h-5 w-5" />, "Admin Panel")}
         </nav>
@@ -187,7 +187,7 @@ function Home({ mode, activeTrip, goBack, currentUser, hasPermission, isAdmin, o
           {isViewingOverview   && <Overview transactions={transactions} currentTransactions={currentTransactions} setSelected={setSelected} />}
           {isViewingGenerator  && isAdmin && <GeneratorPanel onNewTransactions={handleNewTransactions} tripId={tripId} userId={userId} />}
           {isViewingAdmin      && isAdmin && <AdminPanel />}
-          {isViewingSessions && <SessionPanel currentUser={currentUser} isAdmin={isAdmin} />}
+          {isViewingSessions && isAdmin && <SessionPanel currentUser={currentUser} isAdmin={isAdmin} />}
 
           {isDashboardView && (
             <div>
